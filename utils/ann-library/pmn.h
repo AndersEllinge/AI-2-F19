@@ -2,7 +2,7 @@
 #define PMN_H_
 
 #include "../ann-framework/ann.h"
-#include <ode_robots/amosiisensormotordefinition.h>
+//#include <ode_robots/amosiisensormotordefinition.h>
 
 
 class PMN : public ANN {

@@ -222,6 +222,11 @@ namespace lpzrobots {
         for(unsigned int i = 0; i < legContactSensors.size(); i++)
             sensors[i] = legContactSensors[i] ? ((legContactSensors[i]->get())/1.5) : 0;
     }
+
+    sensors[legContactSensors.size()] = position.x;
+    sensors[legContactSensors.size()+1] = position.y;
+    sensors[legContactSensors.size()+2] = position.z;
+
     return NumberOfSensors;
   }
 
@@ -378,11 +383,9 @@ namespace lpzrobots {
     seg.nOfLegs = conf.legsPerSegment;
     seg.position = trunkPos;
 
-
-    for(int j = 0; j < conf.nOfSegments; j++){
-
+    if(conf.nOfSegments == 1){
         //create segment trunk
-        seg.position = TRANSM(-(seg.length+conf.linkLength*2)*j, 0, 0) * trunkPos;
+        seg.position = TRANSM(0, 0, 0) * trunkPos;
         createSegment(seg, &odeHandleBody);
 
 
@@ -395,17 +398,52 @@ namespace lpzrobots {
             int leg = i;
             double legPositionX;
             if(i > 1)
-                legPositionX = conf.legpos1;
+                legPositionX = conf.legpos1-0.075;
             else
-                legPositionX = conf.legpos2;
+                legPositionX = conf.legpos2+0.075;
 
-            createLeg(leg, legPositionX, j, &osgHandleJoint);
+            createLeg(leg, legPositionX, 0, &osgHandleJoint);
 
         }
+    }else{
+        for(int j = 0; j < conf.nOfSegments; j++){
 
-        //adding universal joint between segment trunks
-        if(j>0)
-            createLink(j, &osgHandleJoint);
+            //create segment trunk
+            seg.position = TRANSM(-(seg.length+conf.linkLength*2)*j, 0, 0) * trunkPos;
+            createSegment(seg, &odeHandleBody);
+
+
+            /************************************
+             * adding LEGS
+             ***********************************/
+            //currently, only four leg set up implemented
+            if(seg.nOfLegs == 2){
+                for(int i = 0; i < seg.nOfLegs; i++){
+                    int leg = i;
+                    double legPositionX;
+                    legPositionX = 0;
+                    createLeg(leg, legPositionX, j, &osgHandleJoint);
+
+                }
+            }else{
+
+                for(int i = 0; i < seg.nOfLegs; i++){
+                    int leg = i;
+                    double legPositionX;
+                    if(i > 1)
+                        legPositionX = conf.legpos1;
+                    else
+                        legPositionX = conf.legpos2;
+
+                    createLeg(leg, legPositionX, j, &osgHandleJoint);
+
+                }
+            }
+
+            //adding universal joint between segment trunks
+            if(j>0)
+                createLink(j, &osgHandleJoint);
+        }
     }
 
     //adding IR sensor at front
@@ -423,7 +461,10 @@ namespace lpzrobots {
           conf.usRangeFront, RaySensor::drawRay);
 
         NumberOfSensors++;
-}
+    }
+
+    // sensors for position
+    NumberOfSensors+=3;
 
     setParam("dummy", 0); // apply all parameters.
 
@@ -710,8 +751,9 @@ void Millipede::createLink(int segmentIndex, OsgHandle *osgHandleJoint){
     // create motor, overwrite the jointLimit argument with 1.0
     // because it is less obscure and setMinMax makes mistakes
     // otherwise. Parameters are set later
+
     TwoAxisServo * servo1 = new TwoAxisServoVel(odeHandle, j, -0.3, 0.3, 100, -0.3, 0.3, 100, 0.1, 10.0, 0.1);
-    //PUSH THIS STUFF BACK INTO STH!!!! not hipservos obviously
+
     doubleServos[getMotorIndex(segmentIndex)] = servo1;
     NumberOfMotors++;
 
