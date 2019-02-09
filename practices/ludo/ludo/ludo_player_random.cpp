@@ -1,5 +1,7 @@
 #include "ludo_player_random.h"
 
+#include <random>
+
 ludo_player_random::ludo_player_random(){
 }
 
