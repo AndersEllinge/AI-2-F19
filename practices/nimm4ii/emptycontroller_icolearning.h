@@ -90,6 +90,10 @@ class EmptyController : public AbstractController {
 
 
     //XXXXXXXXXX
+	double xt_reflex_angle_old2;
+	double xt_reflex_angle_old3;
+	double deri_xt_reflex_angle2;
+	double deri_xt_reflex_angle3;
     //XXXXXXXXXX
 
 
@@ -115,6 +119,12 @@ class EmptyController : public AbstractController {
       u_ico_in.resize(2);
 
       //XXXXXXXXXX
+	  w_ico.at(0) = 0;
+	  w_ico.at(1) = 0;
+ 	  deri_xt_reflex_angle2 = 0;	  
+ 	  deri_xt_reflex_angle3 = 0;
+ 	  xt_reflex_angle2 = 0;
+ 	  xt_reflex_angle3 = 0;
       //XXXXXXXXXX
 
        exp_output = 0.0;
@@ -356,8 +366,11 @@ class EmptyController : public AbstractController {
         xt_reflex_angle2 = 0.0;
       }
       reflexive_signal_green = xt_reflex_angle2;
+      //ICO
+      deri_xt_reflex_angle2 = xt_reflex_angle2 - xt_reflex_angle_old2;
+      
 
-      //3) goal 3 BULE
+	  //3) goal 3 BULE
 
       if(input_distance_s3 <range_reflex/*1.2 ~0.0120 very close to target*/)
       {
@@ -369,6 +382,9 @@ class EmptyController : public AbstractController {
         xt_reflex_angle3 = 0.0;
       }
       reflexive_signal_blue = xt_reflex_angle3;
+      //ICO
+      deri_xt_reflex_angle3 = xt_reflex_angle3 - xt_reflex_angle_old3;
+
 
       //4) goal 4 YELLOW
 
@@ -427,15 +443,17 @@ class EmptyController : public AbstractController {
 
 
       //----ICO learning-------//
+	  
+      double rate_ico = 0.1;
 
-      u_ico_in.at(0) = 0; // Green//0; // Green
-      //u_ico_in.at(1) = 0;// Blue//0;// Blue
+      u_ico_in.at(0) = w_ico.at(0) * predictive_signal_green + reflexive_signal_green; // Green//0; // Green
+      u_ico_in.at(1) = w_ico.at(1) * predictive_signal_blue + reflexive_signal_blue;// Blue//0;// Blue
 
 
       //Weights of ICO learning modify these by implementing ICO learning rule!!
 
-      w_ico.at(0) += 0; //Green
-      //w_ico.at(1) += 0; //Blue
+      w_ico.at(0) += rate_ico * deri_xt_reflex_angle2 * predictive_signal_green; //Green
+      w_ico.at(1) += rate_ico * deri_xt_reflex_angle3 * predictive_signal_blue; //Blue
 
 
 
@@ -444,8 +462,8 @@ class EmptyController : public AbstractController {
 
       //OUTPUT
       // Output to steer the robot at the moment, the robot is controlled by noise (as exploration or searching for an object)
-      u_ico_out = 1.0*u_ico_in.at(0)+exp_output;
-      //u_ico_out = 1.0*u_ico_in.at(0)+1.0*u_ico_in.at(1)+exp_output;
+      //u_ico_out = 1.0*u_ico_in.at(0)+exp_output;
+      u_ico_out = 1.0*u_ico_in.at(0)+1.0*u_ico_in.at(1)+exp_output;
 
       outFileicolearning<<w_ico.at(0)<<' '<<predictive_signal_green<<' '<<reflexive_signal_green<<' '
           <<predictive_signal_blue<<' '<<reflexive_signal_blue<<' '<<u_ico_out<<endl;
