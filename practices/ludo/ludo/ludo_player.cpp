@@ -1,12 +1,20 @@
 #include "ludo_player.h"
-#include <random>
 
-ludo_player::ludo_player(){   
+#include <algorithm>
+
+ludo_player::ludo_player() :
+    rd(),
+    gen(rd()),
+    pos_start_of_turn(16),
+    pos_end_of_turn(16),
+    dice_roll(0)
+{
+    std::cout << "Constructing player" << std::endl;
     auto states = pow(2, STATE_VECTOR_SIZE);
     for (auto i = 0; i < states; i++) { // 2^parameters aka statespace
-        std::vector<int> vec;
+        std::vector<float> vec;
         for (auto k = 0; k < 4; k++) { // 4 actions
-            vec.push_back(0);
+            vec.push_back(0);//(float)(rand()%1000)/1000.0f);
         }
         QMatrix.push_back(vec);
     }
@@ -15,32 +23,44 @@ ludo_player::ludo_player(){
 
 int ludo_player::make_decision(){
     for (int i = 1; i < 5; i++) {
-            calcPieceState(i);
+        calcPieceState(i, pos_start_of_turn);
     }
+    float exploration_activations = (float)(rand()%1000)/1000;
+    if(exploration_activations < EXPLORE)
+        return doRandomMove();
+
+    int action = findQMaxAction(writeStateString(stateVector));
+    if(action != -100)
+        return action;
+
+    //decide for random move
+    return doRandomMove();
+
+}
+
+int ludo_player::doRandomMove(){
+    std::vector<int> valid_moves;
     if(dice_roll == 6){
         for(int i = 0; i < 4; ++i){
             if(pos_start_of_turn[i]<0){
-                return i;
-            }
-        }
-        for(int i = 0; i < 4; ++i){
-            if(pos_start_of_turn[i]>=0 && pos_start_of_turn[i] != 99){
-                return i;
-            }
-        }
-    } else {
-        for(int i = 0; i < 4; ++i){
-            if(pos_start_of_turn[i]>=0 && pos_start_of_turn[i] != 99){
-                return i;
-            }
-        }
-        for(int i = 0; i < 4; ++i){ //maybe they are all locked in
-            if(pos_start_of_turn[i]<0){
-                return i;
+                valid_moves.push_back(i);
             }
         }
     }
-    return -1;
+    for(int i = 0; i < 4; ++i){
+        if(pos_start_of_turn[i]>=0 && pos_start_of_turn[i] != 99){
+            valid_moves.push_back(i);
+        }
+    }
+
+    if(valid_moves.size() > 0){
+        std::uniform_int_distribution<> piece(0, valid_moves.size()-1);
+        int select = piece(gen);
+        return valid_moves[select];
+    }
+    else{
+        return -1;
+    }
 }
 
 int ludo_player::findQIndex(std::vector<int> vec){
@@ -61,19 +81,71 @@ void ludo_player::initQMatrix(){
     }
 }
 
+int ludo_player::findQMaxAction(std::string state){
+    int action = 0;
+    float max = -1000;
+
+    int index = convertStringToIndex(state);
+    for (int i = 0; i < 4; i++) {
+        if(QMatrix[index][i] > max && stateVector[i * (STATE_VECTOR_SIZE/4)] == 1){
+            max = QMatrix[index][i];
+            action = i;
+        }
+    }
+    if (max == 0)
+        return -100;
+
+    return action;
+}
+
+int ludo_player::convertStringToIndex(std::string state){
+    int i = std::stoi(state, nullptr,2);
+    return i;
+}
+
+std::string ludo_player::writeStateString(std::vector<int> stateVector){
+    std::string state;
+
+    for (int i = 0; i < stateVector.size(); i++) {
+        if(stateVector[i] == -1 )
+            state += "0";
+        else if(stateVector[i] > 0 )
+            state += "1";
+        else
+            state += std::to_string(stateVector[i]);
+    }
+    return state;
+}
+
 void ludo_player::initStateVector(){
     for (int i = 0; i < STATE_VECTOR_SIZE; ++i) {
-        stateVector[i] = 0;
+        stateVector.push_back(0);
     }
 }
 
 void ludo_player::printStateVector(){
-    std::cout << "State vector: " << std::endl;
-    for(std::vector<int>::size_type i = 0; i < STATE_VECTOR_SIZE; i++ )
+
+    /*for(std::vector<int>::size_type i = 0; i < STATE_VECTOR_SIZE; i++ )
     {
-      std::cout << stateVector[i] << ' ';
+        if(!(i % (STATE_VECTOR_SIZE/4)))
+          std::cout << "Placement: ";
+        if(!((i+3)%(STATE_VECTOR_SIZE/4)))
+          std::cout << " Enemies: ";
+
+        std::cout << stateVector[i] << "; ";
     }
-    std::cout << std::endl;
+    std::cout << std::endl;*/
+
+    std::string state;
+    state = writeStateString(stateVector);
+    std::cout << state << " state index: " << convertStringToIndex(state) << std::endl;
+
+    /*std::cout << "pos vector: " << std::endl;
+    for(std::vector<int>::size_type i = 0; i < pos_start_of_turn.size(); i++ )
+    {
+      std::cout << pos_start_of_turn[i] << ' ';
+    }
+    std::cout << std::endl;*/
 }
 
 
@@ -83,35 +155,135 @@ void ludo_player::printMatrix(){
     {
        for(std::vector<int>::size_type j = 0; j < QMatrix[i].size(); j++ )
        {
-          std::cout << QMatrix[i][j] << ' ';
+          if(QMatrix[i][j] != 0)
+            std::cout << QMatrix[i][j] << " "; //" i " << i << " j " << j << "; ";
        }
-       std::cout << std::endl;
+       //std::cout << std::endl;
     }
 }
 
-void ludo_player::calcPieceState(int i){
+void ludo_player::calcPieceState(int i, std::vector<int>& state){
     int offset = (STATE_VECTOR_SIZE/4)*i;
 
+    // has it reached goal
+    //stateVector[offset-5] = reachedGoal(i-1, state);
+
     // Score state (how close to the goal)
-    stateVector[offset-4] = pos_start_of_turn[i-1];
+    //stateVector[offset-4] = state[i-1];
+
+    // can kill other player
+    stateVector[offset-5] = killPlayer(i-1, state);
 
     // Danger score (is a piece in danger)
-    stateVector[offset-3] = isDanger(i);
+    stateVector[offset-4] = isDanger(i-1, state);
 
-    stateVector[offset-2] = 0;
+    // Piece can move to goal
+    stateVector[offset-3] = moveGoal(i-1, state);
 
-    stateVector[offset-1] = 0;
+    // piece is safe
+    stateVector[offset-2] = isSafe(i-1, state);
+
+    // Is valid movable piece
+    stateVector[offset-1] = isValidMove(i-1, state);
 }
 
-int ludo_player::isDanger(int piece){
-    for (int i = 4; i < pos_start_of_turn.size(); ++i) {
-        if(pos_start_of_turn[piece] - pos_start_of_turn[i] < 7 and pos_start_of_turn[piece] - pos_start_of_turn[i] > 0)
-            return 1;
-        else {
-            return 0;
+int ludo_player::killPlayer(int piece, std::vector<int> &state){
+    int id;
+    int enemies = 0;
+    if (state[piece] > 50)
+        return 0;
+    for (int i = 4; i < state.size(); i++) {
+        if(state[i] < 0 || state[i] > 50)
+            continue;
+
+        if((state[i] - 8) % 13 == 0) // non colored globes
+            continue;
+
+        if(state[i] % 13 == 0 )
+            continue;
+
+        if(state[i] == 0) // home globe
+            enemies++;
+
+        for (int k = 0; k < 4; k++) { // a pair is safe
+            if(state[i] == state[k] && k != i)
+                continue;
+        }
+
+        if (state[piece] != -1) {
+            id = ((state[i] - state[piece]) % 52 + 52) % 52;
+            if(id < 7){
+                //std::cout <<"Piece: "<< piece << " is in danger from enemy: " << i << " with range: " << id <<std::endl;
+                enemies++;
+            }
         }
     }
+    if(enemies > 0)
+        return enemies;
 
+    return 0;
+}
+
+int ludo_player::isValidMove(int piece, std::vector<int> &state){
+    if(dice_roll == 6)
+        if(state[piece]<0)
+            return 1;
+
+    if(state[piece]>=0 && state[piece] != 99)
+        return 1;
+
+    return 0;
+}
+
+int ludo_player::reachedGoal(int piece, std::vector<int>& state){
+    if(pos_start_of_turn[piece] == 99)
+        return 1;
+    return 0;
+}
+
+int ludo_player::isDanger(int piece, std::vector<int>& state){
+    int id;
+    int enemies = 0;
+    if (state[piece] < 0 || state[piece] > 50)
+        return 0;
+    for (int i = 4; i < state.size(); i++) {
+        if(state[i] < 0 || state[i] > 50)
+            continue;
+
+        id = ((state[piece] - state[i]) % 52 + 52) % 52;
+        if(id < 7){
+            //std::cout <<"Piece: "<< piece << " is in danger from enemy: " << i << " with range: " << id <<std::endl;
+            enemies++;
+        }
+    }
+    if(enemies > 0)
+        return enemies;
+    return 0;
+}
+
+int ludo_player::moveGoal(int piece, std::vector<int>& state){
+    if((state[piece] + dice_roll) == 56 || (state[piece] + dice_roll) == 50)
+        return 1;
+    else {
+        return 0;
+    }
+}
+
+int ludo_player::isSafe(int piece, std::vector<int>& state){
+    if((state[piece]) < 51 && (state[piece]) > -1)
+    {
+        if((state[piece] - 8) % 13 == 0) // non colored globes
+            return 1;
+        if(state[piece] == 0) // home globe
+            return 1;
+        if(state[piece] != -1)
+            for (int i = 0; i < 4; i++) { // a pair is safe
+                if(state[piece] == state[i] && piece != i)
+                    return 1;
+            }
+    }
+
+    return 0;
 }
 
 void ludo_player::start_turn(positions_and_dice relative){
@@ -138,6 +310,41 @@ void ludo_player::post_game_analysis(std::vector<int> relative_pos){
             game_complete = false;
         }
     }
-    printStateVector();
+
+    int reward = 0;
+    // if we won, recieve reward
+    if(game_complete)
+        reward = 10000;
+
+    // save previous state
+    oldStateVector = stateVector;
+    //std::cout << "Pre turn State vector: " << std::endl;
+    //printStateVector();
+    // transistion of state is done
+    for (int i = 1; i < 5; i++) {
+        calcPieceState(i, pos_end_of_turn); // recalc the new state
+    }
+    //std::cout << "After turn State vector: " << std::endl;
+    //printStateVector();
+
+
+    // calculate Q value
+
+    // s_t - index from the old state
+    int indexQState = convertStringToIndex(writeStateString(oldStateVector));
+    // a_t - index from the old action we chose
+    int indexAction = findQMaxAction(writeStateString(oldStateVector));
+    // s_t+1
+    int indexQStateNew = convertStringToIndex(writeStateString(stateVector));
+    // a_t+1
+    int indexActionNew = findQMaxAction(writeStateString(stateVector));
+
+    QMatrix[indexQState][indexAction] = QMatrix[indexQState][indexAction] +
+            LEARN * (reward + DISCOUNT *(QMatrix[indexQStateNew][indexActionNew]- QMatrix[indexQState][indexAction]));
+
+
+    //if(game_complete)
+        //printMatrix();
+
     emit turn_complete(game_complete);
 }

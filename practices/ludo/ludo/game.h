@@ -34,6 +34,7 @@ private:
     }
 public:
     int color;
+    std::vector<int> winList;
     std::vector<int> player_positions;
     void rollDice(){
         std::random_device rd;

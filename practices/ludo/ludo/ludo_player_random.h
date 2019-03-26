@@ -3,10 +3,13 @@
 #include <QObject>
 #include <iostream>
 #include "positions_and_dice.h"
+#include <random>
 
 class ludo_player_random : public QObject {
     Q_OBJECT
 private:
+    std::random_device rd;
+    std::mt19937 gen;
     std::vector<int> pos_start_of_turn;
     std::vector<int> pos_end_of_turn;
     int dice_roll;

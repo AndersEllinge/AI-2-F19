@@ -14,7 +14,7 @@ game::game(){
 void game::reset(){
     game_complete = false;
     turn_complete = true;
-    for(auto i : player_positions){
+    for(auto &i : player_positions){
         i = -1;
     }
     color = 3;
@@ -128,7 +128,7 @@ void game::movePiece(int relative_piece){
     } else {
         //convert to relative position
         if(relative_pos == 99){
-            std::cout << "I tought this would be it ";
+            //std::cout << "I tought this would be it ";
         } else if(relative_pos < modifier) {
             relative_pos = relative_pos + 52 - modifier;
         } else if( relative_pos > 50) {
@@ -226,7 +226,8 @@ void game::turnComplete(bool win){
     game_complete = win;
     turn_complete = true;
     if(game_complete){
-        std::cout << "player: " << color << " won" << std::endl;
+        //std::cout << "player: " << color << " won" << std::endl;
+        winList.push_back(color);
         emit declare_winner(color);
     }
 }
