@@ -18,7 +18,7 @@ int main(int argc, char *argv[]){
     //XXXXXX your player e.g., p4 xxxxxxx//
 
     game g;
-    g.setGameDelay(500); //if you want to see the game, set a delay
+    g.setGameDelay(0); //if you want to see the game, set a delay
 
     //* Add a GUI <-- remove the '/' to uncomment block
     Dialog w;
@@ -64,5 +64,5 @@ int main(int argc, char *argv[]){
     }
     p4.printMatrix();
 
-    return 0;
+    return a.exec();
 }

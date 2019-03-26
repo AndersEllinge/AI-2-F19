@@ -92,7 +92,7 @@ int ludo_player::findQMaxAction(std::string state){
             action = i;
         }
     }
-    if (max == 0)
+    if (max == -1000 || max == 0)
         return -100;
 
     return action;
@@ -296,7 +296,7 @@ void ludo_player::start_turn(positions_and_dice relative){
     }
     std::cout << std::endl;
 */
-    printStateVector();
+    //printStateVector();
     dice_roll = relative.dice;
     int decision = make_decision();
     emit select_piece(decision);
