@@ -32,6 +32,9 @@ private:
     int moveGoal(int piece, std::vector<int>& stateVector);
     int isSafe(int piece, std::vector<int>& stateVector); // cant die here
 
+    int wasRandomAction;
+    int savedAction;
+
     std::random_device rd;
     std::mt19937 gen;
     std::vector<int> pos_start_of_turn;
@@ -45,6 +48,7 @@ private:
     float EXPLORE = 0.1;
 
 public:
+    std::vector<int> decisions;
     ludo_player();
     void printMatrix();
 signals:

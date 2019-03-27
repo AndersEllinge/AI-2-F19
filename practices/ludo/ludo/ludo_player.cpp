@@ -25,16 +25,28 @@ int ludo_player::make_decision(){
     for (int i = 1; i < 5; i++) {
         calcPieceState(i, pos_start_of_turn);
     }
+    savedAction = -1;
+    wasRandomAction = 0;
     float exploration_activations = (float)(rand()%1000)/1000;
-    if(exploration_activations < EXPLORE)
-        return doRandomMove();
-
+    //std::cout << exploration_activations << std::endl;
+    if(exploration_activations < EXPLORE){
+        wasRandomAction = 1;
+        savedAction = doRandomMove();
+        decisions.push_back(wasRandomAction);
+        return savedAction;
+    }
     int action = findQMaxAction(writeStateString(stateVector));
-    if(action != -100)
+    if(action != -100){
+        savedAction = action;
+        //std::cout << "did action" << std::endl;
+        decisions.push_back(wasRandomAction);
         return action;
-
+    }
     //decide for random move
-    return doRandomMove();
+    wasRandomAction = 1;
+    savedAction = doRandomMove();
+    decisions.push_back(wasRandomAction);
+    return savedAction;
 
 }
 
@@ -151,15 +163,20 @@ void ludo_player::printStateVector(){
 
 void ludo_player::printMatrix(){
     std::cout << "Q Matrix: " << QMatrix.size() << " x " << QMatrix[0].size() << std::endl;
+    int printedElements = 0;
     for(std::vector<std::vector<int>>::size_type i = 0; i < QMatrix.size(); i++ )
     {
        for(std::vector<int>::size_type j = 0; j < QMatrix[i].size(); j++ )
        {
-          if(QMatrix[i][j] != 0)
-            std::cout << QMatrix[i][j] << " "; //" i " << i << " j " << j << "; ";
+          if(QMatrix[i][j] > 1.0f){
+            //std::cout << QMatrix[i][j] << " , "; //" i " << i << " j " << j << "; ";
+            printedElements++;
+          }
        }
        //std::cout << std::endl;
     }
+    std::cout << std::endl;
+    std::cout << "Printed elements: " << printedElements << std::endl;
 }
 
 void ludo_player::calcPieceState(int i, std::vector<int>& state){
@@ -314,37 +331,40 @@ void ludo_player::post_game_analysis(std::vector<int> relative_pos){
     int reward = 0;
     // if we won, recieve reward
     if(game_complete)
-        reward = 10000;
+        reward = 100;
 
     // save previous state
     oldStateVector = stateVector;
-    //std::cout << "Pre turn State vector: " << std::endl;
-    //printStateVector();
-    // transistion of state is done
-    for (int i = 1; i < 5; i++) {
-        calcPieceState(i, pos_end_of_turn); // recalc the new state
-    }
-    //std::cout << "After turn State vector: " << std::endl;
-    //printStateVector();
-
 
     // calculate Q value
 
     // s_t - index from the old state
     int indexQState = convertStringToIndex(writeStateString(oldStateVector));
     // a_t - index from the old action we chose
-    int indexAction = findQMaxAction(writeStateString(oldStateVector));
+    int indexAction = savedAction;
+
+    for (int i = 1; i < 5; i++) {
+        calcPieceState(i, pos_end_of_turn); // recalc the new state
+    }
+
     // s_t+1
     int indexQStateNew = convertStringToIndex(writeStateString(stateVector));
     // a_t+1
-    int indexActionNew = findQMaxAction(writeStateString(stateVector));
+    int action = findQMaxAction(writeStateString(stateVector));
+    if(action != -100)
+        savedAction = action;
+    else {
+        savedAction = doRandomMove();
+    }
+    int indexActionNew = savedAction;
 
     QMatrix[indexQState][indexAction] = QMatrix[indexQState][indexAction] +
             LEARN * (reward + DISCOUNT *(QMatrix[indexQStateNew][indexActionNew]- QMatrix[indexQState][indexAction]));
 
-
+    //std::cout <<  "Old QMatrix index: "  << indexQState << " indexAction "<< savedAction << std::endl;
+    //std::cout <<  "New QMatrix index: "  << indexQStateNew << " indexAction "<< indexActionNew << std::endl;
     //if(game_complete)
-        //printMatrix();
+    //    printMatrix();
 
     emit turn_complete(game_complete);
 }

@@ -55,14 +55,15 @@ int main(int argc, char *argv[]){
         a.exec();
         g.reset();
         std::cout << "Game: " << var << std::endl;
-        std::cout << "Win ratio: Green " <<
+       /* std::cout << "Win ratio: Green " <<
              (float)std::count(g.winList.begin(), g.winList.end(),0)/g.winList.size() <<
              " Yellow " << (float)std::count(g.winList.begin(), g.winList.end(),1)/g.winList.size() <<
              " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
              " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
-             std::endl;
+             std::endl;*/
+        p4.printMatrix();
     }
     p4.printMatrix();
-
+    std::cout << "% of random actions" << (float)std::count(p4.decisions.begin(), p4.decisions.end(),1)/p4.decisions.size() << std::endl;
     return a.exec();
 }
