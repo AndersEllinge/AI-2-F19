@@ -18,6 +18,7 @@ class game : public QThread
 private:
     bool game_complete;
     bool turn_complete;
+    int turn_counter;
     unsigned int game_delay;
     positions_and_dice relative;
     int dice_result;

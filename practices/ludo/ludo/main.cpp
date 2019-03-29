@@ -3,6 +3,7 @@
 #include "game.h"
 #include <vector>
 #include "ludo_player.h"
+#include "ludo_player_qlearning.h"
 #include "ludo_player_random.h"
 #include "positions_and_dice.h"
 
@@ -13,12 +14,13 @@ int main(int argc, char *argv[]){
     qRegisterMetaType<positions_and_dice>();
 
     //instanciate the players here
-    ludo_player p4; //green (p1), yellow (p2)
+    //ludo_player p4; //green (p1), yellow (p2)
+    ludo_player_QLearning p4;
     ludo_player_random p1, p2, p3; //blue (p3), red (p4)
     //XXXXXX your player e.g., p4 xxxxxxx//
 
     game g;
-    g.setGameDelay(0); //if you want to see the game, set a delay
+    g.setGameDelay(00); //if you want to see the game, set a delay
 
     //* Add a GUI <-- remove the '/' to uncomment block
     Dialog w;
@@ -26,8 +28,9 @@ int main(int argc, char *argv[]){
     QObject::connect(&g,SIGNAL(set_color(int)),                   &w,SLOT(get_color(int)));
     QObject::connect(&g,SIGNAL(set_dice_result(int)),             &w,SLOT(get_dice_result(int)));
     QObject::connect(&g,SIGNAL(declare_winner(int)),              &w,SLOT(get_winner(int)));
+
+    w.show();//*/
     QObject::connect(&g,SIGNAL(close()),                          &a,SLOT(quit()));
-    w.show();
 
     //set up for each player
     QObject::connect(&g, SIGNAL(player1_start(positions_and_dice)),&p1,SLOT(start_turn(positions_and_dice)));
@@ -55,15 +58,21 @@ int main(int argc, char *argv[]){
         a.exec();
         g.reset();
         std::cout << "Game: " << var << std::endl;
-       /* std::cout << "Win ratio: Green " <<
+        /*std::cout << "Win ratio: Green " <<
              (float)std::count(g.winList.begin(), g.winList.end(),0)/g.winList.size() <<
              " Yellow " << (float)std::count(g.winList.begin(), g.winList.end(),1)/g.winList.size() <<
              " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
              " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
              std::endl;*/
-        p4.printMatrix();
+        //p4.printQMatrix();
     }
-    p4.printMatrix();
-    std::cout << "% of random actions" << (float)std::count(p4.decisions.begin(), p4.decisions.end(),1)/p4.decisions.size() << std::endl;
+    std::cout << "Win ratio: Green " <<
+              (float)std::count(g.winList.begin(), g.winList.end(),0)/g.winList.size() <<
+              " Yellow " << (float)std::count(g.winList.begin(), g.winList.end(),1)/g.winList.size() <<
+              " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
+              " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
+              std::endl;
+    p4.printQMatrix();
+    //std::cout << "% of random actions" << (float)std::count(p4.decisions.begin(), p4.decisions.end(),1)/p4.decisions.size() << std::endl;
     return a.exec();
 }
