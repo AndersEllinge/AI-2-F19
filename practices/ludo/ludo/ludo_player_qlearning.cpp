@@ -9,7 +9,7 @@ ludo_player_QLearning::ludo_player_QLearning() :
 {
     std::cout << "Constructing player" << std::endl;
 
-    for (auto i = 0; i < IDLE+1; i++) {
+    for (auto i = 0; i < IDLE_4+1; i++) {
         std::vector<float> vec;
         for (auto k = 0; k < MOVE+1; k++) {
             vec.push_back((float)(rand()%1000)/1000.0f);
@@ -17,6 +17,30 @@ ludo_player_QLearning::ludo_player_QLearning() :
         QMatrix.push_back(vec);
     }
 }
+
+ludo_player_QLearning::ludo_player_QLearning(bool loadQMatrix) :
+    rd(),
+    gen(rd()),
+    pos_start_of_turn(16),
+    pos_end_of_turn(16),
+    dice_roll(0)
+{
+    std::cout << "Constructing player with loaded QMatrix" << std::endl;
+
+    std::ifstream f("QMatrix", std::ios::in);
+    float value;
+
+    for (auto i = 0; i < IDLE_4+1; i++) {
+        std::vector<float> vec;
+        for (auto k = 0; k < MOVE+1; k++) {
+            f >> value;
+            vec.push_back(value);
+        }
+        QMatrix.push_back(vec);
+    }
+    f.close();
+}
+
 
 int ludo_player_QLearning::make_decision(){
     // For every piece
@@ -64,7 +88,7 @@ int ludo_player_QLearning::make_decision(){
         statePrediction[PIECE(bestAction)] = 0;
     }
     else {
-        statePrediction[PIECE(bestAction)] = statePrediction[PIECE(bestAction)+dice_roll];
+        statePrediction[PIECE(bestAction)] = statePrediction[PIECE(bestAction)]+dice_roll;
     }
     std::vector<int> newCurrentStates;
     std::vector<std::vector<int>> newActionsAndStates;
@@ -80,24 +104,43 @@ int ludo_player_QLearning::make_decision(){
     std::tuple<int,int> newBestAction;
     newBestAction = find_Q_Max(newActionsAndStates);
 
-
-    // reward if winning
     float reward = 0;
-    for (int i = 0; i < newCurrentStates.size(); i++) {
-        /*if(newCurrentStates[i] != GOAL){
-            reward = 0;
-        }*/
-        if(ACTION(newBestAction) == MOVE_GOAL)
-            reward = 100;
-        //reward += statePrediction[PIECE(newBestAction)]/100.0f;
+    // reward if winning
+    if(statePrediction[PIECE(bestAction)] != -1){
+        //reward = statePrediction[PIECE(bestAction)] + dice_roll;
     }
+    if(ACTION(bestAction) == MOVE_FROM_HOME){
+        reward += 50;
+    }
+    if(ACTION(bestAction) == MOVE_GOAL){
+        reward += 20;
+    }
+    if(ACTION(bestAction) == MOVE_GOAL_ROAD){
+        reward += 10;
+    }
+    if(ACTION(bestAction) == MOVE_SAFETY){
+        reward += 15;
+    }
+    if(ACTION(bestAction) == MOVE_STAR){
+        reward += 10;
+    }
+    if(ACTION(bestAction) == MOVE_GOAL_STAR){
+        reward += 20;
+    }
+    if(ACTION(bestAction) == MOVE_KILL){
+        reward += 20;
+    }
+
+    //reward += statePrediction[PIECE(newBestAction)]/100.0f;
+
 
     // Do QMatrix stuff
     QMatrix[allCurrentStates[PIECE(bestAction)]][ACTION(bestAction)] =
             QMatrix[allCurrentStates[PIECE(bestAction)]][ACTION(bestAction)] + LEARNING_RATE *
             (reward + DISCOUNT_FACTOR *(QMatrix[newCurrentStates[PIECE(newBestAction)]][ACTION(newBestAction)]
                                       - QMatrix[allCurrentStates[PIECE(bestAction)]][ACTION(bestAction)]));
-
+    //std::cout << "Piece: " << PIECE(bestAction) << " Action: " << ACTION(bestAction) << " State: " <<  allCurrentStates[PIECE(bestAction)] << std::endl;
+   // printQMatrix();
     return PIECE(bestAction);
 }
 
@@ -105,13 +148,13 @@ std::tuple<int,int> ludo_player_QLearning::find_Q_Max(std::vector<std::vector<in
     int max = -1000;
     int newMax;
     std::vector<std::tuple<int, int>> valid_moves;
-    std::vector<int> pieceStates = actionsAndStates[4];
-    for (int i = 0; i < pieceStates.size(); i++) {
+    //std::vector<int> pieceStates = actionsAndStates[4];
+    for (int i = 0; i < actionsAndStates[4].size(); i++) {
         if(actionsAndStates[i].size() == 0)
             continue;
         for (int k = 0; k < actionsAndStates[i].size(); k++) {
-            if(QMatrix[pieceStates[i]][actionsAndStates[i][k]] >= max){
-                max = QMatrix[pieceStates[i]][actionsAndStates[i][k]];
+            if(QMatrix[actionsAndStates[4][k]][actionsAndStates[i][k]] >= max){
+                max = QMatrix[actionsAndStates[4][k]][actionsAndStates[i][k]];
 
                 if(newMax != max)
                     valid_moves.empty();
@@ -148,6 +191,20 @@ void ludo_player_QLearning::printQMatrix(){
     std::cout << "Q Matrix end ----------------------------" << std::endl;
 }
 
+void ludo_player_QLearning::saveMatrix(){
+
+    std::ofstream f("QMatrix");
+    std::vector< std::vector<float>>::iterator row;
+    std::vector<float>::iterator col;
+    for (row = QMatrix.begin();  row != QMatrix.end(); row++) {
+        for (col = row->begin(); col != row->end(); col++) {
+            f << *col << '\n';
+        }
+    }
+    f.close();
+
+}
+
 std::tuple<int,int> ludo_player_QLearning::do_random_movement(std::vector<std::vector<int>> actionsAndStates){
     std::vector<std::tuple<int, int>> valid_moves;
     std::vector<int> pieceStates = actionsAndStates[4];
@@ -174,16 +231,16 @@ int ludo_player_QLearning::get_piece_state(int piece, std::vector<int> positions
     if (positions[piece] == 99 || positions[piece] == 56)
         return GOAL;
 
-    // SAFE
+    // SAFE_1
     if((positions[piece]) < 51 && (positions[piece]) > -1)
     {
         if((positions[piece] - 8) % 13 == 0) // non colored globes
-            return SAFE;
+            return 3 * calc_quardrant(piece, positions);
         if(positions[piece] == 0) // home globe
-            return SAFE;
+            return 3 * calc_quardrant(piece, positions);
         for (int i = 0; i < 4; i++)  // a pair is safe
             if(positions[piece] == positions[i] && piece != i)
-                return SAFE;
+                return 3 * calc_quardrant(piece, positions);
     }
 
     // WINNER_ROAD
@@ -202,9 +259,20 @@ int ludo_player_QLearning::get_piece_state(int piece, std::vector<int> positions
         }
     }
     if(enemies > 0)
-        return DANGER;
+        return 3 * calc_quardrant(piece, positions) + 1;
 
-    return IDLE;
+    return 3 * calc_quardrant(piece, positions) + 2;
+}
+
+int ludo_player_QLearning::calc_quardrant(int piece, std::vector<int> positions){
+    if(positions[piece] <= 12)
+        return 1;
+    if(positions[piece] <= 25)
+        return 2;
+    if(positions[piece] <= 38)
+        return 3;
+    if(positions[piece] <= 51)
+        return 4;
 }
 
 std::vector<int> ludo_player_QLearning::get_actions(int piece, std::vector<int> positions){
@@ -245,6 +313,11 @@ std::vector<int> ludo_player_QLearning::get_actions(int piece, std::vector<int> 
                   (positions[piece] + dice_roll) == 50){
             actions.push_back(MOVE_STAR);
         }
+
+    // Move to star then goal
+    if(positions[piece] != -1)
+        if((positions[piece] + dice_roll) == 50)
+            actions.push_back(MOVE_GOAL_STAR);
 
     // Move to kill
     int id = NULL;

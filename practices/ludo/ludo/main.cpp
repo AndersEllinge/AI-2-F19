@@ -15,12 +15,12 @@ int main(int argc, char *argv[]){
 
     //instanciate the players here
     //ludo_player p4; //green (p1), yellow (p2)
-    ludo_player_QLearning p4;
-    ludo_player_random p1, p2, p3; //blue (p3), red (p4)
+    ludo_player_QLearning p1(true);
+    ludo_player_random p4, p2, p3; //blue (p3), red (p4)
     //XXXXXX your player e.g., p4 xxxxxxx//
 
     game g;
-    g.setGameDelay(00); //if you want to see the game, set a delay
+    g.setGameDelay(0); //if you want to see the game, set a delay
 
     //* Add a GUI <-- remove the '/' to uncomment block
     Dialog w;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]){
     QObject::connect(&g, SIGNAL(player4_end(std::vector<int>)),    &p4,SLOT(post_game_analysis(std::vector<int>)));
     QObject::connect(&p4,SIGNAL(turn_complete(bool)),              &g, SLOT(turnComplete(bool)));
 
-    for (int var = 0; var < 500; var++) {
+    for (int var = 0; var < 1000; var++) {
         g.start();
         a.exec();
         g.reset();
@@ -72,7 +72,8 @@ int main(int argc, char *argv[]){
               " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
               " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
               std::endl;
-    p4.printQMatrix();
+    p1.printQMatrix();
+    p1.saveMatrix();
     //std::cout << "% of random actions" << (float)std::count(p4.decisions.begin(), p4.decisions.end(),1)/p4.decisions.size() << std::endl;
     return a.exec();
 }
