@@ -16,13 +16,17 @@ SOURCES += main.cpp\
         dialog.cpp \
     game.cpp \
     ludo_player.cpp \
-    ludo_player_random.cpp
+    ludo_player_random.cpp \
+    ludo_player_qlearning.cpp \
+    ludo_player_genetic.cpp
 
 HEADERS  += dialog.h \
     game.h \
     ludo_player.h \
     positions_and_dice.h \
-    ludo_player_random.h
+    ludo_player_random.h \
+    ludo_player_qlearning.h \
+    ludo_player_genetic.h
 
 FORMS    += dialog.ui
 
