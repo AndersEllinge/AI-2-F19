@@ -1,11 +1,13 @@
 #include "ludo_player_genetic.h"
 
-ludo_player_genetic::ludo_player_genetic():
+ludo_player_genetic::ludo_player_genetic(bool evolveEnable):
     rd(),
     gen(rd()),
     pos_start_of_turn(16),
     pos_end_of_turn(16),
-    dice_roll(0)
+    dice_roll(0),
+    evolve(evolveEnable),
+    weights(10)
 {
 
 }
@@ -20,7 +22,7 @@ int ludo_player_genetic::make_decision(){
         auto a = chromosome[var].to_ulong();
         float testFloat;
         memcpy(&testFloat, &a, sizeof (testFloat));
-        std::cout << "testfloat " << var << " is: " << testFloat << std::endl;
+        //std::cout << "testfloat " << var << " is: " << testFloat << std::endl;
     }
 
     std::vector<int> valid_moves;
@@ -71,6 +73,10 @@ std::bitset<32> ludo_player_genetic::createRandomGene(){
     return f_as_bitset;
 }
 
+void ludo_player_genetic::setWeights(std::vector<float> chromosome){
+    weights = chromosome;
+}
+
 void ludo_player_genetic::start_turn(positions_and_dice relative){
     pos_start_of_turn = relative.pos;
     dice_roll = relative.dice;
@@ -86,6 +92,8 @@ void ludo_player_genetic::post_game_analysis(std::vector<int> relative_pos){
             game_complete = false;
         }
     }
+    if(evolve)
+
     emit turn_complete(game_complete);
 }
 

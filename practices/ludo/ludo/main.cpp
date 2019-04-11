@@ -5,6 +5,8 @@
 #include "ludo_player.h"
 #include "ludo_player_qlearning.h"
 #include "ludo_player_random.h"
+#include "populationhandler.h"
+#include "ludo_player_genetic.h"
 #include "positions_and_dice.h"
 
 Q_DECLARE_METATYPE( positions_and_dice )
@@ -15,9 +17,25 @@ int main(int argc, char *argv[]){
 
     //instanciate the players here
     //ludo_player p4; //green (p1), yellow (p2)
-    ludo_player_QLearning p1(true);
-    ludo_player_random p4, p2, p3; //blue (p3), red (p4)
+    //ludo_player_QLearning p1(true);
+    ludo_player_genetic p1(true);
+    ludo_player_random p2, p3, p4; //blue (p3), red (p4)
     //XXXXXX your player e.g., p4 xxxxxxx//
+    populationHandler ph(8,2,10,100);
+    ph.loadPopulation();
+    ph.updatePopulation();
+    //p1.setWeights(ph.getChromosomeGenes(std::size_t(0)));
+    //ph.savePopulation();
+    for (std::size_t i = 0; i < ph.populationSize; i++) {
+
+        std::vector<float> test = ph.getChromosomeGenes(i);
+        std::cout << "chomo: " << i << std::endl;
+        for (std::size_t k = 0; k < test.size(); k++) {
+            std::cout << k << " : " << test[k] << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
 
     game g;
     g.setGameDelay(0); //if you want to see the game, set a delay
@@ -54,17 +72,24 @@ int main(int argc, char *argv[]){
     QObject::connect(&p4,SIGNAL(turn_complete(bool)),              &g, SLOT(turnComplete(bool)));
 
     for (int var = 0; var < 1000; var++) {
+
         g.start();
         a.exec();
         g.reset();
         std::cout << "Game: " << var << std::endl;
-        /*std::cout << "Win ratio: Green " <<
-             (float)std::count(g.winList.begin(), g.winList.end(),0)/g.winList.size() <<
-             " Yellow " << (float)std::count(g.winList.begin(), g.winList.end(),1)/g.winList.size() <<
-             " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
-             " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
-             std::endl;*/
-        //p4.printQMatrix();
+
+        // train population
+
+        /*
+        for(i < generations)
+            for(i < trainingGames)
+                p1.setWeights(population.getWeights(i))
+                g.start
+                a.exe
+                g.restart
+            ph.updatePop
+        */
+
     }
     std::cout << "Win ratio: Green " <<
               (float)std::count(g.winList.begin(), g.winList.end(),0)/g.winList.size() <<
@@ -72,8 +97,8 @@ int main(int argc, char *argv[]){
               " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
               " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
               std::endl;
-    p1.printQMatrix();
-    p1.saveMatrix();
+    //p1.printQMatrix();
+    //p1.saveMatrix();
     //std::cout << "% of random actions" << (float)std::count(p4.decisions.begin(), p4.decisions.end(),1)/p4.decisions.size() << std::endl;
     return a.exec();
 }
