@@ -3,14 +3,14 @@
 
 
 
-populationHandler::populationHandler(int populationSize, int tournamentSize, int numberOfGenes, int maxGenerations) :
+populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numberOfGenes, int _maxGenerations) :
     rd(),
     gen(rd()),
     generations(0),
-    maxGenerations(maxGenerations),
-    populationSize(populationSize),
-    tournamentSize(tournamentSize),
-    numberOfGenes(numberOfGenes)
+    maxGenerations(_maxGenerations),
+    populationSize(_populationSize),
+    tournamentSize(_tournamentSize),
+    numberOfGenes(_numberOfGenes)
 {
     for (int i = 0; i < populationSize; i++) {
         population.push_back(createRandomChromosome());
@@ -19,9 +19,6 @@ populationHandler::populationHandler(int populationSize, int tournamentSize, int
 
 chromosome populationHandler::createRandomChromosome(){
     chromosome chromo;
-    chromo.wins = 0;
-    chromo.games = 0;
-    chromo.generation = 0;
     for (int i = 0; i < numberOfGenes; i++) {
         chromo.genes.push_back(createRandomGene());
     }
@@ -89,16 +86,31 @@ void populationHandler::updatePopulation(){
     // New generation
     generations++;
 
-    // Do tournament
+    // Do tournament selection
     calcAvgWin();
+    createTournament();
 
-    createTournament(1);
+    // Mate everyone with everyone and create children
+    std::vector<chromosome> childrenPool;
+    for (auto i = population.begin(); i != population.end(); i++) {
+        for (auto k = population.begin(); k != population.end(); k++) {
+            if(i != k){
+                chromosome child = crossOver(*i,*k);
+                childrenPool.push_back(child);
+            }
+        }
+    }
 
+    // randomly select children to put into the population
+    for (std::size_t var = population.size(); var < std::size_t(populationSize); var++) {
+        std::uniform_int_distribution<int> in(0,(int(childrenPool.size())-1));
+        int randomIndex = in(gen);
+        std::vector<chromosome>::iterator index = childrenPool.begin();
+        population.push_back(childrenPool[std::size_t(randomIndex)]);
+        childrenPool.erase(index + randomIndex);
+    }
+    childrenPool.clear();
 
-
-    //chromosome offspring = crossOver(population[0], population[1]);
-
-    //population.push_back(offspring);
 }
 
 float populationHandler::calcFloat(std::bitset<32> gene){
@@ -110,13 +122,14 @@ float populationHandler::calcFloat(std::bitset<32> gene){
 
 void populationHandler::calcAvgWin(){
     for (auto i = population.begin(); i != population.end(); i++) {
-        i->winRatio = float(i->wins) / float(i->games);
+        if(i->games != 0)
+            i->winRatio = float(i->wins) / float(i->games);
     }
 }
 
 chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
     chromosome offspring;
-    offspring.wins = 0; offspring.games = 0;
+    //offspring.wins = 0; offspring.games = 0; offspring.winRatio = 0;
     offspring.generation = generations;
     float blendAlpha = 0.5;
     float differnce;
@@ -164,7 +177,7 @@ void populationHandler::mutateNonUniform(std::bitset<32> &gene){
     gene = std::bitset<32>(f_as_bitset);
 }
 
-void populationHandler::createTournament(int winners){
+void populationHandler::createTournament(){
     std::vector<chromosome> tempPop;
     std::vector<chromosome> winnerPop;
     for (auto chromo = population.begin(); chromo != population.end(); chromo = population.begin()) {
@@ -172,24 +185,17 @@ void populationHandler::createTournament(int winners){
         for (int i = 0; i < tournamentSize; i++) {
             std::uniform_int_distribution<int> in(0,(population.size()-1));
             int index = in(gen);
-            //std::cout << index << std::endl;
             tempPop.push_back(population[index]);
             population.erase(chromo+index);
         }
 
-        std::vector<chromosome> temp(winners);
-        for (auto var = temp.begin(); var != temp.end(); var++) {
-            var->winRatio = 0;
-        }
+        // sort the selected tournament
+        std::vector<chromosome> ranking = sortByWinRation(tempPop);
 
-        for (auto opponent_1 = tempPop.begin(); opponent_1 != tempPop.end(); opponent_1++) {
-            for (int var = 0; var < winners; var++) {
-                if((opponent_1->winRatio) > (temp[var].winRatio)){
-                    temp[var] = *opponent_1;
-                }
-            }
-        }
+        // select with probability the winner
+        std::vector<chromosome> temp = probabilisticSelection(ranking, 0.8, tournamentSize-1);
 
+        // save the winner
         for (auto var = temp.begin(); var != temp.end(); var++) {
             winnerPop.push_back(*var);
         }
@@ -197,7 +203,42 @@ void populationHandler::createTournament(int winners){
         tempPop.clear();
     }
     population = winnerPop;
-    populationSize = population.size();
+}
+
+std::vector<chromosome> populationHandler::sortByWinRation(std::vector<chromosome> chromosomes){
+    std::vector<chromosome> chromoCopy = chromosomes;
+    std::sort(chromoCopy.begin(), chromoCopy.end());
+    return chromoCopy;
+}
+
+std::vector<chromosome> populationHandler::probabilisticSelection(std::vector<chromosome> chromosomes, float p, int participants){
+    std::vector<chromosome> bins;
+    std::vector<chromosome> result;
+    int temp = 0;
+    float proba = 100*(p * powf((1-p),temp));
+    for (std::size_t var = 0; var < proba; var++) {
+
+        bins.push_back(chromosomes[temp]);
+
+        if(temp < participants & var == ceil(proba-1)){
+            temp++;
+            proba = 100*(p * powf((1-p),temp));
+            var = 0;
+        }
+        else if(temp == participants & var == ceil(proba-1)){
+            proba = 99 - bins.size();
+            var = 0;
+        }
+    }
+
+    // select winner
+    std::uniform_int_distribution<int> t(0,bins.size()-1);
+    int tau = t(gen);
+    //std::cout << "tau is " << tau << std::endl;
+    result.push_back(bins[tau]);
+
+
+    return result;
 }
 
 std::vector<float> populationHandler::getChromosomeGenes(std::size_t index){
@@ -212,6 +253,21 @@ std::vector<float> populationHandler::getChromosomeGenes(std::size_t index){
     return chromosome;
 }
 
+void populationHandler::addWin(std::size_t index){
+    population[index].wins += 1;
+}
+
+void populationHandler::setWins(std::size_t index, int wins){
+
+}
+
+void populationHandler::addGame(std::size_t index){
+    population[index].games += 1;
+}
+
+void populationHandler::setGames(std::size_t index, int games){
+    population[index].games = games;
+}
 
 
 

@@ -16,6 +16,7 @@ void game::reset(){
     turn_counter = 0;
     game_complete = false;
     turn_complete = true;
+    winList.clear();
     for(auto &i : player_positions){
         i = -1;
     }
