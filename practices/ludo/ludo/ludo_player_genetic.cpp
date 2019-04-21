@@ -100,7 +100,7 @@ std::vector<float> ludo_player_genetic::sumWeightsAndStates(std::vector<std::vec
 
 int ludo_player_genetic::isValidMove(int piece){
 
-    if(states[piece][0] == 1 and dice_roll == 6)
+    if(states[piece][0] == 1 && dice_roll == 6)
         return 1;
 
     if(states[piece][15] == 1)
