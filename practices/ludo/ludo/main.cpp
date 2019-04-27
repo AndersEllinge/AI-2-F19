@@ -15,6 +15,9 @@ int main(int argc, char *argv[]){
     QApplication a(argc, argv);
     qRegisterMetaType<positions_and_dice>();
 
+    if(argc == 5)
+        std::cout << "Executing: " << argv[0] << std::endl;
+
     //instanciate the players here
     //ludo_player p4; //green (p1), yellow (p2)
     //ludo_player_QLearning p1(true);
@@ -26,7 +29,7 @@ int main(int argc, char *argv[]){
     game g;
     g.setGameDelay(0); //if you want to see the game, set a delay
 
-    //* Add a GUI <-- remove the '/' to uncomment block
+    /* Add a GUI <-- remove the '/' to uncomment block
     Dialog w;
     QObject::connect(&g,SIGNAL(update_graphics(std::vector<int>)),&w,SLOT(update_graphics(std::vector<int>)));
     QObject::connect(&g,SIGNAL(set_color(int)),                   &w,SLOT(get_color(int)));
@@ -70,16 +73,23 @@ int main(int argc, char *argv[]){
         }
         std::cout << std::endl;
     }*/
-    int populationSize = 20;
-    int tournamentSize = 4;
-    int numberOfGenes = 16;
-    int maxGeneration = 100;
+    int populationSize = atoi(argv[1]);
+    std::cout << "Population size: " << populationSize << std::endl;
+    int tournamentSize = atoi(argv[2]);
+    std::cout << "Tournament size: " << tournamentSize << std::endl;
+    int numberOfGenes = atoi(argv[3]);
+    std::cout << "Gene size: " << numberOfGenes << std::endl;
+    int maxGeneration = atoi(argv[4]);
+    std::cout << "Generation size: " << maxGeneration << std::endl;
     populationHandler ph(populationSize,tournamentSize,numberOfGenes,maxGeneration); // pop,tournSize,nrGene,maxGen
 
-    for (std::size_t i = 0; i < maxGeneration-1; i++) { // gen
-        for (std::size_t k = 0; k < populationSize-1; k++) { // chromo
+    ph.loadPopulation();
+
+    for (std::size_t i = 0; i < maxGeneration; i++) { // gen
+        ph.savePopulation();
+        for (std::size_t k = 0; k < populationSize; k++) { // chromo
             p1.setWeights(ph.getChromosomeGenes(k));
-            for (std::size_t game = 0; game < 99; game++) { // 100 games pr. training session
+            for (std::size_t game = 0; game < 100; game++) { // 100 games pr. training session
                 //std::cout << "Gen: " << i << " chomo: " << k << " Game: " << game << std::endl;
                 g.start();
                 a.exec();
@@ -88,13 +98,14 @@ int main(int argc, char *argv[]){
                 ph.addGame(k);
                 g.reset();
             }
-            std::cout << "Gen: " << i << " chomo: " << k << std::endl;
-            std::cout << "This chromo won: " << float(ph.population[k].wins) /  float (ph.population[k].games) << std::endl;
+            std::cout << "---------------------------------" << std::endl;
+            std::cout << "Completed playing for a specimen." << std::endl;
+            std::cout << "Gen: " << ph.population[k].generation << " index: " << k << std::endl;
+            std::cout << "This specimen won: " << float(ph.population[k].wins) /  float (ph.population[k].games) << std::endl;
         }
         ph.updatePopulation();
-        ph.savePopulation();
     }
-
+    ph.savePopulation();
 
 
     /*std::cout << "Win ratio:"
@@ -103,5 +114,7 @@ int main(int argc, char *argv[]){
               " Blue " << (float)std::count(g.winList.begin(), g.winList.end(),2)/g.winList.size() <<
               " Red " << (float)std::count(g.winList.begin(), g.winList.end(),3)/g.winList.size() <<
               std::endl;*/
-    return a.exec();
+    //a.exec();
+    //a.quit();
+    return 0;
 }

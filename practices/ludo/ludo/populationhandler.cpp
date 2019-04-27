@@ -40,10 +40,12 @@ std::bitset<32> populationHandler::createRandomGene(){
 }
 
 void populationHandler::savePopulation(){
-    std::cout << "Saving population" << std::endl;
+    std::cout << "---------------------------------" << std::endl;
+    std::cout << "Saving population with " << generations << " generations" << std::endl;
     std::ofstream f("population");
     std::vector<chromosome>::iterator chromo;
     std::vector<std::bitset<32>>::iterator gene;
+    f << generations << '\n';
     for (chromo = population.begin();  chromo != population.end(); chromo++) {
         f << chromo->wins << '\n';
         f << chromo->games << '\n';
@@ -57,12 +59,20 @@ void populationHandler::savePopulation(){
 }
 
 void populationHandler::loadPopulation(){
+    std::cout << "---------------------------------" << std::endl;
     std::cout << "Loading population" << std::endl;
 
     std::ifstream f("population", std::ios::in);
+    if(f.fail()){
+        std::cout << "Pop NOT loaded!" << std::endl;
+        return;
+    }
     int value;
     std::string gene;
     population.clear();
+    f >> value;
+    generations = value;
+    std::cout << "Population loaded with " << generations << " generations." << std::endl;
     for (int i = 0; i < populationSize; i++) {
         chromosome chromo;
         f >> value;
@@ -150,6 +160,7 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
         std::bitset<8*sizeof(float)> f_as_bitset{f_as_int}; // 3.
 
         // nonuniform mutation - the exploration should become smaller when generations increases.
+        // YOU SHOULD NOT DO THIS, GET RANDOM % OF GENES TO MUTATE
         mutateNonUniform(f_as_bitset);
 
         offspring.genes.push_back(f_as_bitset);
@@ -193,7 +204,7 @@ void populationHandler::createTournament(){
         std::vector<chromosome> ranking = sortByWinRation(tempPop);
 
         // select with probability the winner
-        std::vector<chromosome> temp = probabilisticSelection(ranking, 0.8, tournamentSize-1);
+        std::vector<chromosome> temp = probabilisticSelection(ranking, 1.f, tournamentSize-1);
 
         // save the winner
         for (auto var = temp.begin(); var != temp.end(); var++) {
@@ -211,11 +222,23 @@ std::vector<chromosome> populationHandler::sortByWinRation(std::vector<chromosom
     return chromoCopy;
 }
 
+/*
+* This function will given a vector of chromosomes, a probability and a number of participants select randomly between the chromosomes.
+* The probability is the chance of selecting the best, then depending on the number of participants their chance will
+* split in a exponentional way the rest of the space.
+* Hence a weak participant has a chance of survival.
+*/
 std::vector<chromosome> populationHandler::probabilisticSelection(std::vector<chromosome> chromosomes, float p, int participants){
     std::vector<chromosome> bins;
     std::vector<chromosome> result;
     int temp = 0;
     float proba = 100*(p * powf((1-p),temp));
+
+    if(p == 1.f) {
+        result.push_back(chromosomes[0]);
+        return result;
+    }
+
     for (std::size_t var = 0; var < proba; var++) {
 
         bins.push_back(chromosomes[temp]);
