@@ -35,7 +35,7 @@ private:
     void calcAvgWin();
     chromosome crossOver(chromosome parent1, chromosome parent2);
     void mutateNonUniform(std::bitset<32> &offspring);
-    void createTournament();
+    void createTournament(int tournaments);
     std::vector<chromosome> sortByWinRation(std::vector<chromosome> chromosomes);
     std::vector<chromosome> probabilisticSelection(std::vector<chromosome> chromosomes, float p, int participants);
     void createChildren();
@@ -43,6 +43,7 @@ private:
 public:
     populationHandler(int _populationSize,
                       int _tournamentSize,
+                      int _numTournaments,
                       int _numberOfGenes,
                       int _maxGenerations);
     void savePopulation();
@@ -60,6 +61,7 @@ public:
     int maxGenerations;
     int populationSize;
     int tournamentSize;
+    int numTournaments;
     int numberOfGenes;
 
 signals:

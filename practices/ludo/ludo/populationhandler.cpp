@@ -3,13 +3,14 @@
 
 
 
-populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numberOfGenes, int _maxGenerations) :
+populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numTournaments , int _numberOfGenes, int _maxGenerations) :
     rd(),
     gen(rd()),
     generations(0),
     maxGenerations(_maxGenerations),
     populationSize(_populationSize),
     tournamentSize(_tournamentSize),
+    numTournaments(_numTournaments),
     numberOfGenes(_numberOfGenes)
 {
     for (int i = 0; i < populationSize; i++) {
@@ -95,10 +96,13 @@ void populationHandler::loadPopulation(){
 void populationHandler::updatePopulation(){
     // New generation
     generations++;
+    calcAvgWin();
 
     // Do tournament selection
-    calcAvgWin();
-    createTournament();
+
+    // TODO MAKE TOURNAMENET WHERE THEY DONT DIE AFTER BEING PART OF A TOURNAMENT
+    // THAT IS THAT THEY ARE PUT BACK AFTER THE TOURNAMENT.
+    createTournament(_numTournaments);
 
     // Mate everyone with everyone and create children
     std::vector<chromosome> childrenPool;
@@ -143,6 +147,7 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
     offspring.generation = generations;
     float blendAlpha = 0.5;
     float differnce;
+
     for (std::size_t i = 0; i < parent1.genes.size(); i++) {
        // BLX-a crossover - one offspring
         float start = calcFloat(parent1.genes[i]);
@@ -151,7 +156,7 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
 
         std::uniform_real_distribution<float> piece(
                     std::min(start,end) - blendAlpha * differnce,
-                    std::max(start,end) - blendAlpha * differnce);
+                    std::max(start,end) + blendAlpha * differnce); // is this - or + ?
         float f = piece(gen);
 
         static_assert(sizeof(float) <= sizeof(long long unsigned int), "wrong sizes"); // 1.
@@ -160,8 +165,12 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
         std::bitset<8*sizeof(float)> f_as_bitset{f_as_int}; // 3.
 
         // nonuniform mutation - the exploration should become smaller when generations increases.
-        // YOU SHOULD NOT DO THIS, GET RANDOM % OF GENES TO MUTATE
-        mutateNonUniform(f_as_bitset);
+        // TODO MAKE THIS NOT DO IT EVERYTIME
+        // 1/16 chance, this should on average give one mutation per chromosome
+        std::uniform_int_distribution<int> random(1,16);
+        int r = random(gen);
+        if(r == 1)
+            mutateNonUniform(f_as_bitset);
 
         offspring.genes.push_back(f_as_bitset);
     }
@@ -188,8 +197,34 @@ void populationHandler::mutateNonUniform(std::bitset<32> &gene){
     gene = std::bitset<32>(f_as_bitset);
 }
 
-void populationHandler::createTournament(){
+void populationHandler::createTournament(int numTournaments){
     std::vector<chromosome> tempPop;
+    std::vector<chromosome> winnerPop;
+    for (auto numberOfTournaments = 0; numberOfTournaments < tournaments; numberOfTournaments++) {
+
+        // selects random chromes to play
+        for (int i = 0; i < tournamentSize; i++) {
+            std::uniform_int_distribution<int> in(0,(population.size()-1));
+            int index = in(gen);
+            tempPop.push_back(population[index]);
+        }
+
+        // sort the selected tournament
+        std::vector<chromosome> ranking = sortByWinRation(tempPop);
+
+        // select with probability the winner
+        std::vector<chromosome> temp = probabilisticSelection(ranking, 0.8, tournamentSize-1);
+
+        // save the winner
+        for (auto var = temp.begin(); var != temp.end(); var++) {
+            winnerPop.push_back(*var);
+        }
+        temp.clear();
+        tempPop.clear();
+    }
+    population = winnerPop;
+
+/*  std::vector<chromosome> tempPop;
     std::vector<chromosome> winnerPop;
     for (auto chromo = population.begin(); chromo != population.end(); chromo = population.begin()) {
 
@@ -213,7 +248,7 @@ void populationHandler::createTournament(){
         temp.clear();
         tempPop.clear();
     }
-    population = winnerPop;
+    population = winnerPop;*/
 }
 
 std::vector<chromosome> populationHandler::sortByWinRation(std::vector<chromosome> chromosomes){
