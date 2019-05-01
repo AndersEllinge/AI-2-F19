@@ -10,6 +10,22 @@ game::game(){
          player_positions.push_back(-1);
     }
     color = 3;
+    startNewGame(false);
+}
+
+game::game(int maxGen, int popSize, int trainGames){
+    game_delay = 1000;
+    game_complete = false;
+    turn_complete = true;
+    turn_counter = 0;
+    for(int i = 0; i < 16; ++i){
+         player_positions.push_back(-1);
+    }
+    color = 3;
+    maxGeneration = maxGen;
+    populationSize = popSize;
+    trainingGames = trainGames;
+    startNewGame(false);
 }
 
 void game::reset(){
@@ -267,8 +283,51 @@ void game::turnComplete(bool win){
     }
 }
 
+void game::startNewGame(bool start){
+    newGame = start;
+}
+
 void game::run() {
     if(DEBUG) std::cout << "color:     relative pos => fixed\n";
+
+    // First time all will be playing
+    for (std::size_t k = 0; k < populationSize*trainingGames; k++) { // chromo
+        while(!game_complete){
+            if(turn_complete){
+                turn_complete = false;
+                msleep(game_delay/4);
+                next_turn(game_delay - game_delay/4);
+            }
+        }
+        while(!newGame) {
+            std::cout << "" << std::flush;
+        }
+        reset();
+        newGame = false;
+    }
+    // The trained dont need to play again, so we only train new ones
+    for (std::size_t i = 0; i < maxGeneration-1; i++) { // gen
+        for (std::size_t k = 0; k < (80)*trainingGames; k++) { // chromo
+            while(!game_complete){
+                if(turn_complete){
+                    turn_complete = false;
+                    msleep(game_delay/4);
+                    next_turn(game_delay - game_delay/4);
+                }
+            }
+            while(!newGame) {
+                msleep(1);
+            }
+            reset();
+            newGame = false;
+        }
+    }
+
+    msleep(10);
+
+    emit close();
+
+    /*if(DEBUG) std::cout << "color:     relative pos => fixed\n";
     while(!game_complete){
         if(turn_complete){
             turn_complete = false;
@@ -277,5 +336,5 @@ void game::run() {
         }
     }
     emit close();
-    QThread::exit();
+    QThread::exit();*/
 }

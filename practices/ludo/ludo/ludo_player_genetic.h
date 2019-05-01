@@ -47,9 +47,11 @@ public:
     ludo_player_genetic(bool evolveEnable);
     void setWeights(std::vector<float> chromosome);
 signals:
+    void chromoChanged();
     void select_piece(int);
     void turn_complete(bool);
 public slots:
+    void newChromosome(std::vector<float> chromo);
     void start_turn(positions_and_dice relative);
     void post_game_analysis(std::vector<int> relative_pos);
 };

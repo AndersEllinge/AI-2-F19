@@ -3,7 +3,7 @@
 
 
 
-populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numTournaments , int _numberOfGenes, int _maxGenerations) :
+populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numTournaments , int _numberOfGenes, int _maxGenerations, int _trainingGames) :
     rd(),
     gen(rd()),
     generations(0),
@@ -11,11 +11,20 @@ populationHandler::populationHandler(int _populationSize, int _tournamentSize, i
     populationSize(_populationSize),
     tournamentSize(_tournamentSize),
     numTournaments(_numTournaments),
+    trainingGames(_trainingGames),
     numberOfGenes(_numberOfGenes)
 {
     for (int i = 0; i < populationSize; i++) {
         population.push_back(createRandomChromosome());
     }
+}
+
+int populationHandler::nonTrainedChromosome(){
+    for(int chromo = 0;  chromo < populationSize; chromo++){
+        if(!population[chromo].trained)
+            return chromo;
+    }
+    return -1;
 }
 
 chromosome populationHandler::createRandomChromosome(){
@@ -59,13 +68,39 @@ void populationHandler::savePopulation(){
     f.close();
 }
 
+void populationHandler::saveData(){
+    std::cout << "---------------------------------" << std::endl;
+    std::cout << "Saving new data with " << generations << " generations" << std::endl;
+    std::ofstream f("data", std::ios::out | std::ios::app);
+    /*f.open("data");
+    if(f.fail()){
+        std::cout << "ERROR - Data NOT saved!" << std::endl;
+        return;
+    }*/
+    //f.exceptions(f.exceptions() | std::ios::failbit | std::ifstream::badbit);
+    for (auto chromo = population.begin();  chromo != population.end(); chromo++) {
+        f << chromo->wins << ", ";
+        f << chromo->games << ", ";
+        f << chromo->generation << ", ";
+        for (auto gene = chromo->genes.begin(); gene != chromo->genes.end(); gene++) {
+            f << calcFloat(*gene) << ", ";
+        }
+        f << '\n';
+    }
+    f.close();
+}
+
 void populationHandler::loadPopulation(){
     std::cout << "---------------------------------" << std::endl;
     std::cout << "Loading population" << std::endl;
 
     std::ifstream f("population", std::ios::in);
     if(f.fail()){
-        std::cout << "Pop NOT loaded!" << std::endl;
+        std::cout << "ERROR - Pop NOT loaded!" << std::endl;
+        std::cout << "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0" << std::endl;
+        gameNumber = 1;
+        traineeIndex = nonTrainedChromosome();
+        emit newChromosome(getChromosomeGenes(traineeIndex));
         return;
     }
     int value;
@@ -74,6 +109,7 @@ void populationHandler::loadPopulation(){
     f >> value;
     generations = value;
     std::cout << "Population loaded with " << generations << " generations." << std::endl;
+    std::cout << "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0" << std::endl;
     for (int i = 0; i < populationSize; i++) {
         chromosome chromo;
         f >> value;
@@ -91,31 +127,38 @@ void populationHandler::loadPopulation(){
         population.push_back(chromo);
     }
     f.close();
+
+    gameNumber = 1;
+    traineeIndex = nonTrainedChromosome();
+    emit newChromosome(getChromosomeGenes(trainingGames));
 }
 
 void populationHandler::updatePopulation(){
     // New generation
+    saveData();
     generations++;
+    std::cout << "Calculating averages" << std::endl;
     calcAvgWin();
 
     // Do tournament selection
 
-    // TODO MAKE TOURNAMENET WHERE THEY DONT DIE AFTER BEING PART OF A TOURNAMENT
-    // THAT IS THAT THEY ARE PUT BACK AFTER THE TOURNAMENT.
-    createTournament(_numTournaments);
+    std::cout << "Doing tournaments" << std::endl;
+    createTournament(numTournaments);
 
     // Mate everyone with everyone and create children
+    std::cout << "Making children" << std::endl;
     std::vector<chromosome> childrenPool;
     for (auto i = population.begin(); i != population.end(); i++) {
         for (auto k = population.begin(); k != population.end(); k++) {
-            if(i != k){
+            //if(i != k){ // It can now mate with it self
                 chromosome child = crossOver(*i,*k);
                 childrenPool.push_back(child);
-            }
+            //}
         }
     }
 
     // randomly select children to put into the population
+    std::cout << "Selecting children" << std::endl;
     for (std::size_t var = population.size(); var < std::size_t(populationSize); var++) {
         std::uniform_int_distribution<int> in(0,(int(childrenPool.size())-1));
         int randomIndex = in(gen);
@@ -124,7 +167,8 @@ void populationHandler::updatePopulation(){
         childrenPool.erase(index + randomIndex);
     }
     childrenPool.clear();
-
+    std::cout << "Update complete!" << std::endl;
+    savePopulation();
 }
 
 float populationHandler::calcFloat(std::bitset<32> gene){
@@ -165,7 +209,6 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
         std::bitset<8*sizeof(float)> f_as_bitset{f_as_int}; // 3.
 
         // nonuniform mutation - the exploration should become smaller when generations increases.
-        // TODO MAKE THIS NOT DO IT EVERYTIME
         // 1/16 chance, this should on average give one mutation per chromosome
         std::uniform_int_distribution<int> random(1,16);
         int r = random(gen);
@@ -199,29 +242,51 @@ void populationHandler::mutateNonUniform(std::bitset<32> &gene){
 
 void populationHandler::createTournament(int numTournaments){
     std::vector<chromosome> tempPop;
+    std::vector<int> tempIndex;
     std::vector<chromosome> winnerPop;
-    for (auto numberOfTournaments = 0; numberOfTournaments < tournaments; numberOfTournaments++) {
+    std::cout << "We will have " << numTournaments << " tournaments with " << tournamentSize << " chromosomes" << std::endl;
+    for (auto numberOfTournaments = 0; numberOfTournaments < numTournaments; numberOfTournaments++) {
 
+        std::cout << "Tournament number: " << numberOfTournaments << std::endl;
+        std::cout << "Select random players for tournament" << std::endl;
         // selects random chromes to play
         for (int i = 0; i < tournamentSize; i++) {
             std::uniform_int_distribution<int> in(0,(population.size()-1));
             int index = in(gen);
+
+            // If we allready picked one, we dont need it again.
+            if(checkIfPicked(index,tempIndex)){
+                i--;
+                continue;
+            }
+            tempIndex.push_back(index);
             tempPop.push_back(population[index]);
         }
+        tempIndex.clear();
 
+        std::cout << "Sort the selected in the tournament" << std::endl;
         // sort the selected tournament
         std::vector<chromosome> ranking = sortByWinRation(tempPop);
 
+        std::cout << "Secelt with probabilty the winner" << std::endl;
         // select with probability the winner
-        std::vector<chromosome> temp = probabilisticSelection(ranking, 0.8, tournamentSize-1);
+        std::vector<chromosome> temp = probabilisticSelection(ranking, 0.9, tournamentSize-1);
 
+        std::cout << "Save the winner of the tournament" << std::endl;
         // save the winner
-        for (auto var = temp.begin(); var != temp.end(); var++) {
-            winnerPop.push_back(*var);
+        //for (auto var = temp.begin(); var != temp.end(); var++)
+        if(checkIfWinner(temp[0],winnerPop)){
+            numberOfTournaments--;
+            temp.clear();
+            tempPop.clear();
+            continue;
         }
+        winnerPop.push_back(*temp.begin());
+        //}
         temp.clear();
         tempPop.clear();
     }
+    std::cout << "Updating population" << std::endl;
     population = winnerPop;
 
 /*  std::vector<chromosome> tempPop;
@@ -249,6 +314,27 @@ void populationHandler::createTournament(int numTournaments){
         tempPop.clear();
     }
     population = winnerPop;*/
+}
+
+/*
+ * This function checks if the chromosome has allrdy been picked.
+ */
+bool populationHandler::checkIfPicked(int index, std::vector<int> tempIndex){
+    for(auto indicies = tempIndex.begin(); indicies != tempIndex.end(); indicies++){
+        if(index == *indicies){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool populationHandler::checkIfWinner(chromosome index, std::vector<chromosome> chromo){
+    for(auto indicies = chromo.begin(); indicies != chromo.end(); indicies++){
+        if(index.genes == indicies->genes)
+            return true;
+    }
+    return false;
+
 }
 
 std::vector<chromosome> populationHandler::sortByWinRation(std::vector<chromosome> chromosomes){
@@ -326,6 +412,46 @@ void populationHandler::addGame(std::size_t index){
 void populationHandler::setGames(std::size_t index, int games){
     population[index].games = games;
 }
+
+void populationHandler::gameFinish(int color){
+    std::cout << "#" << std::flush;
+    addGame(traineeIndex);
+    if(color == 0)
+        addWin(traineeIndex);
+    if(gameNumber == trainingGames){
+        population[traineeIndex].trained = true;
+        gameNumber = 1;
+        std::cout << std::endl;
+        std::cout << "Completed playing for a specimen." << std::endl;
+        std::cout << "Gen: " << population[traineeIndex].generation << " index: " << traineeIndex << std::endl;
+        std::cout << "This specimen won: " << float(population[traineeIndex].wins) /  float (population[traineeIndex].games) << std::endl;
+        std::cout << std::endl;
+        if(nonTrainedChromosome() == -1){ // No more to train
+            std::cout << "Updating generation" << std::endl;
+            updatePopulation();
+            traineeIndex = nonTrainedChromosome();
+            std::cout << "Training individual nr: " << traineeIndex << std::endl;
+            std::cout << "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0" << std::endl;
+            emit newChromosome(getChromosomeGenes(traineeIndex));
+        }
+        else{ // Train new
+            traineeIndex = nonTrainedChromosome();
+            std::cout << "Training individual nr: " << traineeIndex << std::endl;
+            std::cout << "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0" << std::endl;
+            emit newChromosome(getChromosomeGenes(traineeIndex));
+        }
+
+    }
+    else{
+        gameNumber++;
+        emit newGame(true);
+    }
+}
+
+void populationHandler::chromoChanged(){
+    emit newGame(true);
+}
+
 
 
 

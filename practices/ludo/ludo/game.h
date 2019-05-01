@@ -16,6 +16,9 @@ class game : public QThread
 {
     Q_OBJECT
 private:
+    int maxGeneration;
+    int populationSize;
+    int trainingGames;
     bool game_complete;
     bool turn_complete;
     int turn_counter;
@@ -34,6 +37,7 @@ private:
         QThread::msleep(msecs);
     }
 public:
+    bool newGame;
     int color;
     std::vector<int> winList;
     std::vector<int> player_positions;
@@ -45,6 +49,7 @@ public:
     }
     int getDiceRoll() {return dice_result; }
     game();
+    game(int maxGen, int popSize, int trainGames);
     void setGameDelay(unsigned int mili_seconds){ game_delay = mili_seconds; }
     void reset();
 signals:
@@ -66,6 +71,7 @@ signals:
 
 public slots:
     void turnComplete(bool win);
+    void startNewGame(bool start);
     void movePiece(int relative_piece); //check game rules
 protected:
     void run();

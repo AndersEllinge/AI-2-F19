@@ -349,6 +349,11 @@ void ludo_player_genetic::setWeights(std::vector<float> chromosome){
     weights = chromosome;
 }
 
+void ludo_player_genetic::newChromosome(std::vector<float> chromo){
+    weights = chromo;
+    emit chromoChanged();
+}
+
 void ludo_player_genetic::start_turn(positions_and_dice relative){
     pos_start_of_turn = relative.pos;
     dice_roll = relative.dice;
