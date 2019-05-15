@@ -51,7 +51,10 @@ public:
                       int _numTournaments,
                       int _numberOfGenes,
                       int _maxGenerations,
-                      int _trainingGames);
+                      int _trainingGames,
+                      int _mutationRatem,
+                      std::string _dataF,
+                      std::string _dataP);
     void savePopulation();
     void saveData();
     void saveChromosome();
@@ -71,6 +74,9 @@ public:
     int numTournaments;
     int numberOfGenes;
     int trainingGames;
+    int mutationRate;
+    std::string dataFile;
+    std::string populationFile;
 
 signals:
     void newGame(bool);

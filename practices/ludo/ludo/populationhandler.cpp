@@ -3,7 +3,9 @@
 
 
 
-populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numTournaments , int _numberOfGenes, int _maxGenerations, int _trainingGames) :
+populationHandler::populationHandler(int _populationSize, int _tournamentSize, int _numTournaments,
+                                     int _numberOfGenes, int _maxGenerations, int _trainingGames,
+                                     int _mutationRate, std::string _dataF, std::string _dataP) :
     rd(),
     gen(rd()),
     generations(0),
@@ -12,7 +14,10 @@ populationHandler::populationHandler(int _populationSize, int _tournamentSize, i
     tournamentSize(_tournamentSize),
     numTournaments(_numTournaments),
     trainingGames(_trainingGames),
-    numberOfGenes(_numberOfGenes)
+    numberOfGenes(_numberOfGenes),
+    mutationRate(_mutationRate),
+    dataFile(_dataF),
+    populationFile(_dataP)
 {
     for (int i = 0; i < populationSize; i++) {
         population.push_back(createRandomChromosome());
@@ -52,7 +57,7 @@ std::bitset<32> populationHandler::createRandomGene(){
 void populationHandler::savePopulation(){
     std::cout << "---------------------------------" << std::endl;
     std::cout << "Saving population with " << generations << " generations" << std::endl;
-    std::ofstream f("population");
+    std::ofstream f(populationFile);
     std::vector<chromosome>::iterator chromo;
     std::vector<std::bitset<32>>::iterator gene;
     f << generations << '\n';
@@ -71,7 +76,7 @@ void populationHandler::savePopulation(){
 void populationHandler::saveData(){
     std::cout << "---------------------------------" << std::endl;
     std::cout << "Saving new data with " << generations << " generations" << std::endl;
-    std::ofstream f("data", std::ios::out | std::ios::app);
+    std::ofstream f(dataFile, std::ios::out | std::ios::app);
     /*f.open("data");
     if(f.fail()){
         std::cout << "ERROR - Data NOT saved!" << std::endl;
@@ -94,7 +99,7 @@ void populationHandler::loadPopulation(){
     std::cout << "---------------------------------" << std::endl;
     std::cout << "Loading population" << std::endl;
 
-    std::ifstream f("population", std::ios::in);
+    std::ifstream f(populationFile, std::ios::in);
     if(f.fail()){
         std::cout << "ERROR - Pop NOT loaded!" << std::endl;
         std::cout << "---------1---------2---------3---------4---------5---------6---------7---------8---------9---------0" << std::endl;
@@ -130,7 +135,7 @@ void populationHandler::loadPopulation(){
 
     gameNumber = 1;
     traineeIndex = nonTrainedChromosome();
-    emit newChromosome(getChromosomeGenes(trainingGames));
+    emit newChromosome(getChromosomeGenes(traineeIndex));
 }
 
 void populationHandler::updatePopulation(){
@@ -210,7 +215,7 @@ chromosome populationHandler::crossOver(chromosome parent1, chromosome parent2){
 
         // nonuniform mutation - the exploration should become smaller when generations increases.
         // 1/16 chance, this should on average give one mutation per chromosome
-        std::uniform_int_distribution<int> random(1,16);
+        std::uniform_int_distribution<int> random(1,mutationRate);
         int r = random(gen);
         if(r == 1)
             mutateNonUniform(f_as_bitset);

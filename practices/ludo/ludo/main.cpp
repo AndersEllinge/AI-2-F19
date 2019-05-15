@@ -15,7 +15,7 @@ int main(int argc, char *argv[]){
     QApplication a(argc, argv);
     qRegisterMetaType<positions_and_dice>();
 
-    if(argc == 7)
+    if(argc == 10)
         std::cout << "Executing: " << argv[0] << std::endl;
 
     int populationSize = atoi(argv[1]);
@@ -30,7 +30,15 @@ int main(int argc, char *argv[]){
     std::cout << "Generation size: " << maxGeneration << std::endl;
     int trainingGames = atoi(argv[6]);
     std::cout << "Number of Training games: " << trainingGames << std::endl;
-    populationHandler ph(populationSize,tournamentSize,numTournaments,numberOfGenes,maxGeneration,trainingGames); // pop,tournSize,nrGene,maxGen
+    int mutationRate = atoi(argv[7]);
+    std::cout << "Mutation rate is: 1/" << mutationRate << std::endl;
+    std::string data = argv[8];
+    std::cout << "Using data file: " << data << std::endl;
+    std::string pop = argv[9];
+    std::cout << "Using pop file: " << pop << std::endl;
+    populationHandler ph(populationSize,tournamentSize,numTournaments,
+                         numberOfGenes,maxGeneration,trainingGames,
+                         mutationRate,data,pop); // pop,tournSize,nrGene,maxGen
 
     ph.loadPopulation();
 
